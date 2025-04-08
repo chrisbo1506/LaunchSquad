@@ -49,6 +49,16 @@ if "current_view" not in st.session_state:
 if "selected_shop" not in st.session_state:
     st.session_state.selected_shop = None
 
+# Restaurant voting system initialization
+if "votes" not in st.session_state:
+    st.session_state.votes = {}  # Format: {"username": "restaurant_vote"}
+if "vote_count" not in st.session_state:
+    st.session_state.vote_count = {
+        "yamyam": 0,
+        "doner": 0,
+        "edeka": 0
+    }
+
 # Initialize order manager if not already present
 # This will automatically handle cloud persistence
 if "order_manager" not in st.session_state:
@@ -62,6 +72,31 @@ else:
     # Make sure order_manager has the latest orders if they were modified elsewhere
     if len(st.session_state.orders) != len(st.session_state.order_manager.orders):
         st.session_state.order_manager.orders = st.session_state.orders
+
+def vote_for_restaurant(username, restaurant):
+    """Record a vote for a restaurant"""
+    # Prüfe auf leeren Benutzernamen
+    if not username or username.strip() == "":
+        return False, "Bitte gib deinen Namen ein."
+    
+    # Bereinige den Benutzernamen
+    username = username.strip()
+    
+    # Aktualisiere den Stimmenzähler, wenn sich die Stimme geändert hat
+    if username in st.session_state.votes:
+        old_vote = st.session_state.votes[username]
+        if old_vote != restaurant:
+            # Entferne die alte Stimme
+            st.session_state.vote_count[old_vote] -= 1
+            # Füge die neue Stimme hinzu
+            st.session_state.vote_count[restaurant] += 1
+    else:
+        # Neue Stimme
+        st.session_state.vote_count[restaurant] += 1
+    
+    # Speichere die Stimme des Benutzers
+    st.session_state.votes[username] = restaurant
+    return True, f"Stimme für {restaurant.capitalize()} gezählt!"
 
 def save_orders():
     """Save orders to persistent storage"""
@@ -99,8 +134,8 @@ def remove_order(index):
         st.session_state.order_manager.orders = st.session_state.orders
         # Save orders explicitly
         st.session_state.order_manager.save_orders()
-        st.success("Bestellung entfernt.")
-        st.rerun()
+        return True
+    return False
 
 def clear_orders():
     """Clear all orders"""
@@ -112,8 +147,17 @@ def clear_orders():
     success = st.session_state.order_manager.clear_orders()
     # Save explicitly to ensure persistence
     st.session_state.order_manager.save_orders()
+    
+    # Reset the votes when orders are cleared
+    st.session_state.votes = {}
+    st.session_state.vote_count = {
+        "yamyam": 0,
+        "doner": 0,
+        "edeka": 0
+    }
+    
     if success:
-        st.success("Alle Bestellungen wurden gelöscht.")
+        st.success("Alle Bestellungen und Abstimmungen wurden gelöscht.")
     else:
         st.error("Fehler beim Löschen der Bestellungen.")
     st.rerun()
@@ -210,6 +254,58 @@ if st.sidebar.button("Alle Bestellungen löschen", use_container_width=True):
 if st.session_state.current_view == "main":
     # Main selection view
     st.title("Restaurantauswahl")
+    
+    # Restaurant voting system
+    st.subheader("Abstimmung: Welches Restaurant soll heute gewählt werden?")
+    
+    vote_col1, vote_col2 = st.columns([2, 1])
+    
+    with vote_col1:
+        # Eingabefeld für den Namen
+        voter_name = st.text_input("Dein Name:", key="voter_name")
+        
+        # Radiobuttons für die Restaurant-Auswahl
+        vote_option = st.radio(
+            "Restaurant wählen:",
+            ["YamYam", "Döner", "Edeka"],
+            horizontal=True
+        )
+        
+        # Button zum Abstimmen
+        if st.button("Abstimmen"):
+            if not voter_name:
+                st.error("Bitte gib deinen Namen ein!")
+            else:
+                # Konvertiere die Auswahl in den internen Schlüssel
+                vote_key = vote_option.lower()
+                if vote_option == "Döner":
+                    vote_key = "doner"
+                
+                # Zeichne die Stimme auf
+                success, message = vote_for_restaurant(voter_name, vote_key)
+                if success:
+                    st.success(message)
+                else:
+                    st.error(message)
+    
+    with vote_col2:
+        # Ergebnisse anzeigen
+        st.write("### Abstimmungsergebnis")
+        st.write(f"YamYam: {st.session_state.vote_count['yamyam']} Stimmen")
+        st.write(f"Döner: {st.session_state.vote_count['doner']} Stimmen")
+        st.write(f"Edeka: {st.session_state.vote_count['edeka']} Stimmen")
+        
+        # Teilnehmer anzeigen
+        if st.session_state.votes:
+            st.write("### Teilnehmer")
+            for name, vote in st.session_state.votes.items():
+                restaurant_name = vote.capitalize()
+                if vote == "doner":
+                    restaurant_name = "Döner"
+                st.write(f"- {name}: {restaurant_name}")
+    
+    st.markdown("---")
+    st.subheader("Restaurant auswählen")
     
     # Create a row of 3 columns for restaurant options
     col1, col2, col3 = st.columns(3)
@@ -455,16 +551,27 @@ elif st.session_state.current_view == "order_list":
         st.subheader("Bestellungen verwalten")
         
         # Allow removing specific orders
-        with st.expander("Bestellung entfernen"):
-            # Create a selectbox with order descriptions
-            order_options = [f"{i+1}. {orders_df.iloc[i]['Name']} - {orders_df.iloc[i]['Restaurant']} - {orders_df.iloc[i]['Bestellung']}" 
-                           for i in range(len(orders_df))]
-            selected_order_idx = st.selectbox("Wähle eine Bestellung zum Entfernen:", 
-                                           options=range(len(order_options)),
-                                           format_func=lambda x: order_options[x])
+        with st.expander("Bestellungen entfernen"):
+            st.write("Wähle die Bestellungen aus, die du entfernen möchtest:")
             
-            if st.button("Ausgewählte Bestellung entfernen"):
-                remove_order(selected_order_idx)
+            # Initialisiere einen leeren Ordner für die zu löschenden Indizes
+            to_delete = []
+            
+            # Erstelle für jede Bestellung eine Checkbox
+            for i in range(len(orders_df)):
+                order_text = f"{orders_df.iloc[i]['Name']} - {orders_df.iloc[i]['Restaurant']} - {orders_df.iloc[i]['Bestellung']}"
+                if st.checkbox(order_text, key=f"delete_order_{i}"):
+                    to_delete.append(i)
+            
+            # Button zum Entfernen der ausgewählten Bestellungen
+            if to_delete and st.button("Ausgewählte Bestellungen entfernen"):
+                # Entferne Bestellungen von hinten nach vorne, damit die Indizes gültig bleiben
+                for idx in sorted(to_delete, reverse=True):
+                    remove_order(idx)
+                st.success(f"{len(to_delete)} Bestellung(en) wurden entfernt.")
+                st.rerun()
+            elif not to_delete and st.button("Ausgewählte Bestellungen entfernen"):
+                st.warning("Bitte wähle mindestens eine Bestellung aus.")
         
         # Action to clear all orders
         st.warning("⚠️ Achtung: Diese Aktion kann nicht rückgängig gemacht werden!")
