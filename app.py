@@ -50,6 +50,10 @@ if "current_view" not in st.session_state:
     st.session_state.current_view = "main"
 if "selected_shop" not in st.session_state:
     st.session_state.selected_shop = None
+# Initialize orders_data if not already present
+if "orders_data" not in st.session_state:
+    st.session_state.orders_data = []
+
 if "order_manager" not in st.session_state:
     # Initialize order manager and load orders
     st.session_state.order_manager = OrderManager()
