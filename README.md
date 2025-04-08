@@ -1,69 +1,53 @@
-# LunchSquad - Team Lunch Organizer (Streamlit Version)
+# LunchSquad - Team Lunch Organizer
 
-Eine Streamlit-Webanwendung zur Organisation von Team-Mittagsbestellungen mit erweiterter Datenpersistenz und Cloud-kompatibler Funktionalität.
+Eine Streamlit-Anwendung zum Organisieren von Team-Mittagsbestellungen, mit Unterstützung für mehrere Restaurants (YamYam, Döner, Edeka) und anpassbaren Bestellungen.
 
-## Beschreibung
+## Features
 
-LunchSquad ist eine benutzerfreundliche Anwendung, die es Teams ermöglicht, Mittagsbestellungen bei verschiedenen Restaurants zu koordinieren. Die Anwendung unterstützt mehrere Restaurants (YamYam, Döner, Edeka) mit anpassbaren Bestelloptionen und bietet eine übersichtliche Verwaltung aller Bestellungen.
-
-## Funktionen
-
-- Interaktive Restaurantauswahl mit spezifischen Bestellformularen
-- Speichern und Laden von Bestellungen mit robuster Datenpersistenz
-- Export von Bestellungen in verschiedenen Formaten (CSV, JSON, TXT, Bild)
+- Bestellungen für verschiedene Restaurants verwalten
+- Individuelle Bestelloptionen je nach Restaurant
+- Persistente Speicherung der Bestellungen (auch nach App-Neustart)
+- Export der Bestellungen in verschiedenen Formaten (JSON, CSV, TXT, PNG)
 - Import von Bestellungen aus JSON-Dateien
-- Responsive Benutzeroberfläche mit Streamlit
+- Übersichtliche Darstellung aller Bestellungen
 
-## Installation und Ausführung
+## Restaurants
 
-### Lokale Ausführung
+### YamYam
+- Asiatische Gerichte mit Nummern-Auswahl
 
-1. Repository klonen:
-```
-git clone https://github.com/deinbenutzername/launchsquad.git
-cd launchsquad
-```
+### Döner
+- Döner, Dürüm, Dönerbox und mehr
+- Auswahl verschiedener Läden (Döner Bruder, King Kebabo's, Aldi Döner)
+- Individualisierung mit Soßen, Extras und Schärfegrad
 
-2. Abhängigkeiten installieren:
-```
-pip install -r requirements.txt
-```
+### Edeka
+- Belegtes Brötchen, Salat, Bäcker-Produkte
 
-3. Anwendung starten:
-```
+## Cloud-Persistenz
+
+Die Anwendung verwendet einen Cloud-Speichermechanismus, um sicherzustellen, dass Bestellungen auch nach einem Neustart der Anwendung verfügbar bleiben, wenn sie auf Streamlit Community Cloud gehostet wird.
+
+## Technische Details
+
+- Implementiert in Python mit Streamlit
+- Hierarchischer Persistenz-Ansatz:
+  1. Cloud-Speicher (primär für Streamlit Cloud)
+  2. Session State (für Kompatibilität)
+  3. Dateibasierte Speicherung (für lokale Entwicklung)
+- Modulare Struktur mit getrennten Dateien für Modelle, Konfiguration und Hilfsfunktionen
+
+## Starten der Anwendung
+
+```bash
 streamlit run app.py
 ```
 
-### Streamlit Cloud Deployment
+## Projektstruktur
 
-1. Erstelle einen Account auf [Streamlit Sharing](https://streamlit.io/sharing)
-2. Verbinde dein GitHub-Repository mit Streamlit Sharing
-3. Wähle `app.py` als Hauptdatei und starte die Anwendung
-
-## Konfiguration
-
-Die Anwendung ist für die Verwendung in der Streamlit Cloud optimiert. Die wichtigsten Konfigurationsdateien sind:
-
-- `.streamlit/config.toml` - Streamlit Server-Konfiguration
-- `pyproject.toml` - Python-Abhängigkeiten
-
-## Datenpersistenz
-
-Die Anwendung verwendet einen hybriden Ansatz zur Datenpersistenz:
-
-1. Lokale JSON-Datei (`lunch_orders.json`) für persistente Speicherung
-2. Streamlit Session State für vorübergehende Datenspeicherung während der Sitzung
-
-Dieser Ansatz stellt sicher, dass Daten auch in der Streamlit Cloud-Umgebung erhalten bleiben.
-
-## Fehlerbehebung
-
-Wenn die Anwendung in der Streamlit Cloud nicht startet:
-
-1. Überprüfe die `.streamlit/config.toml` auf korrekte Server-Einstellungen
-2. Stelle sicher, dass `pyproject.toml` alle notwendigen Abhängigkeiten enthält
-3. Überprüfe die Logs in der Streamlit Cloud-Benutzeroberfläche
-
-## Lizenz
-
-[MIT Lizenz](LICENSE)
+- `app.py`: Hauptanwendung mit UI-Code
+- `models.py`: Datenmodelle und Persistenz-Logik
+- `config.py`: Konfigurationswerte und Optionen
+- `utils.py`: Hilfsfunktionen für Formatierung und Validierung
+- `cloud_storage.py`: Cloud-Persistenz-Mechanismus für Streamlit Cloud
+- `.streamlit/config.toml`: Streamlit-Serverkonfiguration

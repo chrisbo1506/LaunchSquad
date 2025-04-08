@@ -34,6 +34,7 @@ from utils import (
     validate_doner_order,
     validate_edeka_order
 )
+from cloud_storage import CloudStorage
 
 # Set page config
 st.set_page_config(
@@ -42,28 +43,31 @@ st.set_page_config(
     layout="wide"
 )
 
-# Initialize session state
-if "orders" not in st.session_state:
-    st.session_state.orders = []
+# Initialize session state for navigation and UI state
 if "current_view" not in st.session_state:
     st.session_state.current_view = "main"
 if "selected_shop" not in st.session_state:
     st.session_state.selected_shop = None
-# Initialize orders_data if not already present
-if "orders_data" not in st.session_state:
-    st.session_state.orders_data = []
 
+# Initialize order manager if not already present
+# This will automatically handle cloud persistence
 if "order_manager" not in st.session_state:
-    # Initialize order manager and load orders
     st.session_state.order_manager = OrderManager()
-    # Copy orders into session state for UI management
+
+# Ensure orders are properly initialized in session state
+# This maintains backward compatibility with existing code
+if "orders" not in st.session_state:
     st.session_state.orders = st.session_state.order_manager.get_orders()
+else:
+    # Make sure order_manager has the latest orders if they were modified elsewhere
+    if len(st.session_state.orders) != len(st.session_state.order_manager.orders):
+        st.session_state.order_manager.orders = st.session_state.orders
 
 def save_orders():
-    """Save orders to JSON file"""
-    # Sicherstellen, dass OrderManager die aktuelle Liste hat
+    """Save orders to persistent storage"""
+    # Make sure OrderManager has the current list
     st.session_state.order_manager.orders = st.session_state.orders
-    # Jetzt speichern
+    # Save orders
     success = st.session_state.order_manager.save_orders()
     if success:
         st.success("Bestellungen wurden erfolgreich gespeichert.")

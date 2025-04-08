@@ -11,6 +11,7 @@ from datetime import datetime
 import pandas as pd
 import streamlit as st
 from config import DEFAULT_ORDER_FILE
+from cloud_storage import CloudStorage
 
 class OrderManager:
     """Manages the orders and their persistence"""
@@ -18,6 +19,7 @@ class OrderManager:
     def __init__(self, storage_file=DEFAULT_ORDER_FILE):
         self.storage_file = storage_file
         self.orders = []
+        self.cloud_storage = CloudStorage()
         self.load_orders()
 
     def add_order(self, order):
@@ -50,42 +52,73 @@ class OrderManager:
         return self.orders
 
     def load_orders(self):
-        """Load orders from storage file or session state"""
-        # First try to load from session state if available (for Streamlit Cloud)
-        if 'orders_data' in st.session_state:
+        """
+        Load orders with a hierarchical approach:
+        1. First try Cloud Storage (for Streamlit Cloud)
+        2. Then try session state (for compatibility with existing code)
+        3. Finally try file-based storage (for local development)
+        """
+        # Step 1: Try Cloud Storage first (most reliable in Streamlit Cloud)
+        cloud_orders = self.cloud_storage.load_data('orders_data')
+        if cloud_orders is not None:
+            self.orders = cloud_orders
+            # Ensure session state is also updated
+            if hasattr(st, 'session_state'):
+                st.session_state.orders_data = self.orders
+            return True
+            
+        # Step 2: Try session state (for compatibility with existing code)
+        if hasattr(st, 'session_state') and 'orders_data' in st.session_state:
             self.orders = st.session_state.orders_data
+            # Save to cloud storage for future use
+            self.cloud_storage.save_data('orders_data', self.orders)
             return True
         
-        # Otherwise load from file
+        # Step 3: Try file-based storage (works for local development)
         try:
             if os.path.exists(self.storage_file):
                 with open(self.storage_file, 'r', encoding='utf-8') as f:
                     self.orders = json.load(f)
-                # Save to session state for future use
-                st.session_state.orders_data = self.orders
+                
+                # Save to cloud storage and session state for future use
+                self.cloud_storage.save_data('orders_data', self.orders)
+                if hasattr(st, 'session_state'):
+                    st.session_state.orders_data = self.orders
                 return True
         except Exception as e:
-            print(f"Error loading orders: {e}")
-            self.orders = []
-            if hasattr(st, 'session_state'):
-                st.session_state.orders_data = []
+            print(f"Error loading orders from file: {e}")
+        
+        # If no orders found, initialize with empty list
+        self.orders = []
+        self.cloud_storage.save_data('orders_data', self.orders)
+        if hasattr(st, 'session_state'):
+            st.session_state.orders_data = self.orders
         return False
 
     def save_orders(self):
-        """Save orders to storage file and session state"""
-        # Always save to session state for persistence on Streamlit Cloud
+        """
+        Save orders with a hierarchical approach:
+        1. Always save to Cloud Storage (for Streamlit Cloud persistence)
+        2. Always update session state (for current session)
+        3. Try to save to file (works locally, may not work on Streamlit Cloud)
+        """
+        # Step 1: Always save to Cloud Storage (critical for Streamlit Cloud)
+        self.cloud_storage.save_data('orders_data', self.orders)
+        
+        # Step 2: Always update session state (for current session)
         if hasattr(st, 'session_state'):
             st.session_state.orders_data = self.orders
         
-        # Also try to save to file (works locally, may not work on Streamlit Cloud)
+        # Step 3: Try to save to file (works locally, may not work on Streamlit Cloud)
         try:
             with open(self.storage_file, 'w', encoding='utf-8') as f:
                 json.dump(self.orders, f, ensure_ascii=False, indent=2)
-            return True
         except Exception as e:
-            print(f"Error saving to file: {e}")
-            # Not critical as we already saved to session state
-            return True
+            print(f"Warning: Could not save to file (expected in cloud environments): {e}")
+            # This is expected to fail in some cloud environments, but we already
+            # saved to Cloud Storage, so we still return True
+        
+        return True
 
     def get_orders_dataframe(self):
         """Convert orders to a pandas DataFrame for display"""
