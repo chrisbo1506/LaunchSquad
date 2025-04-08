@@ -60,7 +60,7 @@ EDEKA_OPTIONS = {
     "products": ["Salat", "Sandwich", "Wrap", "Bäcker"],
     
     # Salad options
-    "salads": ["Kleiner Salat", "Großer Salat", "Spezial Salat"],
+    "salads": ["Kleiner Salat (€3.50)", "Großer Salat (€5.90)", "Spezial Salat (€7.50)"],
     
     # Sandwich/Wrap sauces
     "sauces": ["Mayo", "Senf", "Ketchup", "BBQ", "Süß-Sauer", "Ohne Sauce"]

@@ -216,7 +216,11 @@ class OrderManager:
                     if product == 'Salat':
                         salat_type = row.get('salatType', '-')
                         formatted_row['Bestellung'] = f"{salat_type}"
-                        formatted_row['Details'] = ''
+                        # Anmerkungen anzeigen, wenn vorhanden
+                        if 'customOrder' in row and row['customOrder']:
+                            formatted_row['Details'] = f"Anmerkung: {row['customOrder']}"
+                        else:
+                            formatted_row['Details'] = ''
                     elif product == 'Bäcker':
                         baecker_item = row.get('baeckerItem', '-')
                         formatted_row['Bestellung'] = f"Bäcker"
@@ -224,7 +228,11 @@ class OrderManager:
                     else:
                         sauce = row.get('sauce', 'keine')
                         formatted_row['Bestellung'] = f"{product}"
-                        formatted_row['Details'] = f"Sauce: {sauce}"
+                        details = [f"Sauce: {sauce}"]
+                        # Anmerkungen anzeigen, wenn vorhanden
+                        if 'customOrder' in row and row['customOrder']:
+                            details.append(f"Anmerkung: {row['customOrder']}")
+                        formatted_row['Details'] = ", ".join(details)
                 
                 else:
                     formatted_row['Restaurant'] = order_type.capitalize()

@@ -2,15 +2,15 @@
   {
     "type": "doner",
     "shop": "king",
-    "name": "Chris",
+    "name": "qwewe",
     "product": "doner",
     "sauces": [
-      "jogurt"
+      "knoblauch"
     ],
     "extras": [
-      "ohne-tomate"
+      "ohne-salat"
     ],
-    "spiceLevel": "normal",
-    "timestamp": "2025-03-19T15:54:29.612520"
+    "spiceLevel": "none",
+    "timestamp": "2025-04-08T13:54:46.169292"
   }
 ]

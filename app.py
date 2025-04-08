@@ -390,9 +390,13 @@ elif st.session_state.current_view == "edeka":
         salat_type = None
         sauce = None
         baecker_item = None
+        custom_order = None
         
         if product == "Salat":
             salat_type = st.selectbox("Salat Auswahl:", EDEKA_OPTIONS['salads'])
+            # Zusätzliches Freitext-Feld für Anmerkungen zum Salat
+            custom_order = st.text_area("Zusätzliche Anmerkungen (optional):", 
+                                         placeholder="z.B. Ohne Oliven, Extra Tomaten")
         elif product == "Bäcker":
             # Einfacher Ansatz mit Textfeld und Beschreibung
             st.markdown("### Bäcker Bestellung:")
@@ -401,6 +405,9 @@ elif st.session_state.current_view == "edeka":
                                       placeholder="z.B. 2 Laugenbrötchen, 1 Nussschnecke")
         else:
             sauce = st.selectbox("Sauce:", EDEKA_OPTIONS['sauces'])
+            # Zusätzliches Freitext-Feld für Sandwich und Wrap
+            custom_order = st.text_area("Zusätzliche Anmerkungen (optional):", 
+                                         placeholder="z.B. Ohne Gurken, Extra Käse")
         
         submitted = st.form_submit_button("Hinzufügen")
         if submitted:
@@ -411,13 +418,20 @@ elif st.session_state.current_view == "edeka":
                 "product": product
             }
             
-            # Add salat type, sauce, or baecker item based on product
+            # Add salat type, sauce, baecker item, or custom order based on product
             if product == "Salat" and salat_type:
                 order["salatType"] = salat_type
+                # Füge Freitext hinzu, wenn vorhanden
+                if custom_order and custom_order.strip():
+                    order["customOrder"] = custom_order.strip()
             elif product == "Bäcker" and baecker_item:
                 order["baeckerItem"] = baecker_item
-            elif sauce:
-                order["sauce"] = sauce
+            elif product != "Bäcker":  # Für Sandwich und Wrap (aber nicht für Bäcker)
+                if sauce:
+                    order["sauce"] = sauce
+                # Füge Freitext hinzu, wenn vorhanden
+                if custom_order and custom_order.strip():
+                    order["customOrder"] = custom_order.strip()
             
             # Validate order
             valid, error_message = validate_edeka_order(order)
@@ -454,10 +468,27 @@ elif st.session_state.current_view == "order_list":
         
         # Action to clear all orders
         st.warning("⚠️ Achtung: Diese Aktion kann nicht rückgängig gemacht werden!")
+        
+        # Initialisiere Checkbox-Status in session_state, falls nicht vorhanden
+        if "confirm_clear_all" not in st.session_state:
+            st.session_state.confirm_clear_all = False
+            
+        # Checkbox für Bestätigung (vor dem Button, damit sie nicht verschwindet)
+        confirmation = st.checkbox(
+            "Bestätigen: Alle Bestellungen unwiderruflich löschen?", 
+            key="confirm_checkbox",
+            value=st.session_state.confirm_clear_all
+        )
+        
+        # Aktualisiere session_state basierend auf Checkbox
+        st.session_state.confirm_clear_all = confirmation
+        
+        # Button zum Löschen
         if st.button("Alle Bestellungen löschen", key="clear_all_orders"):
-            confirmation = st.checkbox("Bestätigen: Alle Bestellungen unwiderruflich löschen?")
-            if confirmation:
+            if st.session_state.confirm_clear_all:
                 clear_orders()
+            else:
+                st.error("Bitte bestätige zuerst, dass du alle Bestellungen löschen möchtest.")
     else:
         st.info("Keine Bestellungen vorhanden.")
         
