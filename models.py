@@ -25,12 +25,16 @@ class OrderManager:
         # Add timestamp to the order
         order["timestamp"] = datetime.now().isoformat()
         self.orders.append(order)
+        # Save immediately for persistence
+        self.save_orders()
         return True
 
     def remove_order(self, index):
         """Remove an order by its index"""
         if 0 <= index < len(self.orders):
             del self.orders[index]
+            # Save immediately for persistence
+            self.save_orders()
             return True
         return False
 
@@ -63,13 +67,15 @@ class OrderManager:
         except Exception as e:
             print(f"Error loading orders: {e}")
             self.orders = []
-            st.session_state.orders_data = []
+            if hasattr(st, 'session_state'):
+                st.session_state.orders_data = []
         return False
 
     def save_orders(self):
         """Save orders to storage file and session state"""
         # Always save to session state for persistence on Streamlit Cloud
-        st.session_state.orders_data = self.orders
+        if hasattr(st, 'session_state'):
+            st.session_state.orders_data = self.orders
         
         # Also try to save to file (works locally, may not work on Streamlit Cloud)
         try:
