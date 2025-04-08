@@ -13,7 +13,6 @@ import pandas as pd
 import os
 import json
 from datetime import datetime
-import webbrowser
 from PIL import Image
 
 from models import OrderManager
@@ -62,7 +61,9 @@ if "order_manager" not in st.session_state:
 
 def save_orders():
     """Save orders to JSON file"""
+    # Sicherstellen, dass OrderManager die aktuelle Liste hat
     st.session_state.order_manager.orders = st.session_state.orders
+    # Jetzt speichern
     success = st.session_state.order_manager.save_orders()
     if success:
         st.success("Bestellungen wurden erfolgreich gespeichert.")
@@ -76,6 +77,8 @@ def add_order(order_data):
     st.session_state.orders.append(order_data)
     # Update order manager
     st.session_state.order_manager.orders = st.session_state.orders
+    # Save orders explicitly
+    st.session_state.order_manager.save_orders()
     
     # Inform user
     st.success(f"Bestellung für {order_data['name']} hinzugefügt!")
@@ -185,6 +188,7 @@ if uploaded_file is not None:
         if isinstance(imported_orders, list):
             st.session_state.orders = imported_orders
             st.session_state.order_manager.orders = imported_orders
+            st.session_state.order_manager.save_orders()
             st.sidebar.success(f"{len(imported_orders)} Bestellungen importiert.")
             st.rerun()
         else:
@@ -271,11 +275,11 @@ elif st.session_state.current_view == "yamyam":
             }
             
             # Validate order
-            valid, error_message = validate_yamyam_order(order)
-            if valid:
+            validation_result = validate_yamyam_order(order)
+            if validation_result[0]:  # valid ist erstes Element des Tuples
                 add_order(order)
             else:
-                st.error(error_message)
+                st.error(validation_result[1])  # error_message ist zweites Element des Tuples
 
 elif st.session_state.current_view == "doner":
     # Döner order form
@@ -301,8 +305,8 @@ elif st.session_state.current_view == "doner":
         with st.form("doner_order_form"):
             name = st.text_input("Name:")
             
-            # Product selection
-            product = st.selectbox("Produkt:", DONER_OPTIONS['products'])
+            # Product selection - angepasst an die Liste anstatt Dictionary
+            product = st.selectbox("Produkt:", options=DONER_OPTIONS['products'])
             product_value = DONER_OPTIONS['product_values'][DONER_OPTIONS['products'].index(product)]
             
             # Box options (only shown if Dönerbox is selected)
@@ -337,11 +341,14 @@ elif st.session_state.current_view == "doner":
             # Zusätzliches Freitext-Feld für individuelle Extras
             st.write("Oder eigene Extras eingeben:")
             custom_extra = st.text_input("Eigene Anmerkung:", key="custom_extra_input")
-            if custom_extra.strip():
-                extras.append(f"custom:{custom_extra.strip()}")
             
             submitted = st.form_submit_button("Hinzufügen")
             if submitted:
+                # Bei leerem custom_extra nicht hinzufügen
+                custom_extras = []
+                if custom_extra.strip():
+                    custom_extras = [f"custom:{custom_extra.strip()}"]
+                
                 # Create order object
                 order = {
                     "type": "doner",
@@ -349,7 +356,7 @@ elif st.session_state.current_view == "doner":
                     "name": name,
                     "product": product_value,
                     "sauces": sauces,
-                    "extras": extras,
+                    "extras": extras + custom_extras,
                     "spiceLevel": spice_value
                 }
                 
@@ -358,11 +365,11 @@ elif st.session_state.current_view == "doner":
                     order["boxType"] = box_type
                 
                 # Validate order
-                valid, error_message = validate_doner_order(order)
-                if valid:
+                validation_result = validate_doner_order(order)
+                if validation_result[0]:  # valid ist erstes Element des Tuples
                     add_order(order)
                 else:
-                    st.error(error_message)
+                    st.error(validation_result[1])  # error_message ist zweites Element des Tuples
     else:
         st.info("Bitte wähle zuerst einen Laden aus.")
 
@@ -376,21 +383,19 @@ elif st.session_state.current_view == "edeka":
         product = st.selectbox("Produkt:", EDEKA_OPTIONS['products'])
         
         # Conditional fields based on product selection
+        salat_type = None
+        sauce = None
+        baecker_item = None
+        
         if product == "Salat":
             salat_type = st.selectbox("Salat Auswahl:", EDEKA_OPTIONS['salads'])
-            sauce = None
-            baecker_item = None
         elif product == "Bäcker":
             # Einfacher Ansatz mit Textfeld und Beschreibung
             st.markdown("### Bäcker Bestellung:")
             baecker_item = st.text_input("Freitext:", 
-                                        value="", 
-                                        placeholder="z.B. 2 Laugenbrötchen, 1 Nussschnecke")
-            salat_type = None
-            sauce = None
+                                      value="", 
+                                      placeholder="z.B. 2 Laugenbrötchen, 1 Nussschnecke")
         else:
-            salat_type = None
-            baecker_item = None
             sauce = st.selectbox("Sauce:", EDEKA_OPTIONS['sauces'])
         
         submitted = st.form_submit_button("Hinzufügen")
@@ -403,19 +408,19 @@ elif st.session_state.current_view == "edeka":
             }
             
             # Add salat type, sauce, or baecker item based on product
-            if product == "Salat":
+            if product == "Salat" and salat_type:
                 order["salatType"] = salat_type
-            elif product == "Bäcker":
+            elif product == "Bäcker" and baecker_item:
                 order["baeckerItem"] = baecker_item
-            else:
+            elif sauce:
                 order["sauce"] = sauce
             
             # Validate order
-            valid, error_message = validate_edeka_order(order)
-            if valid:
+            validation_result = validate_edeka_order(order)
+            if validation_result[0]:  # valid ist erstes Element des Tuples
                 add_order(order)
             else:
-                st.error(error_message)
+                st.error(validation_result[1])  # error_message ist zweites Element des Tuples
 
 elif st.session_state.current_view == "order_list":
     # Order list view
@@ -435,13 +440,20 @@ elif st.session_state.current_view == "order_list":
         with st.expander("Bestellung entfernen"):
             # Create a selectbox with order descriptions
             order_options = [f"{i+1}. {orders_df.iloc[i]['Name']} - {orders_df.iloc[i]['Restaurant']} - {orders_df.iloc[i]['Bestellung']}" 
-                            for i in range(len(orders_df))]
+                           for i in range(len(orders_df))]
             selected_order_idx = st.selectbox("Wähle eine Bestellung zum Entfernen:", 
-                                            options=range(len(order_options)),
-                                            format_func=lambda x: order_options[x])
+                                           options=range(len(order_options)),
+                                           format_func=lambda x: order_options[x])
             
             if st.button("Ausgewählte Bestellung entfernen"):
                 remove_order(selected_order_idx)
+        
+        # Action to clear all orders
+        st.warning("⚠️ Achtung: Diese Aktion kann nicht rückgängig gemacht werden!")
+        if st.button("Alle Bestellungen löschen", key="clear_all_orders"):
+            confirmation = st.checkbox("Bestätigen: Alle Bestellungen unwiderruflich löschen?")
+            if confirmation:
+                clear_orders()
     else:
         st.info("Keine Bestellungen vorhanden.")
         
@@ -451,4 +463,4 @@ elif st.session_state.current_view == "order_list":
 
 # Footer with version info
 st.markdown("---")
-st.caption(f"LunchSquad v1.0.0 - Team Lunch Organizer") 
+st.caption(f"LunchSquad v1.0.0 - Team Lunch Organizer")
