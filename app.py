@@ -275,11 +275,11 @@ elif st.session_state.current_view == "yamyam":
             }
             
             # Validate order
-            validation_result = validate_yamyam_order(order)
-            if validation_result[0]:  # valid ist erstes Element des Tuples
+            valid, error_message = validate_yamyam_order(order)
+            if valid:
                 add_order(order)
             else:
-                st.error(validation_result[1])  # error_message ist zweites Element des Tuples
+                st.error(error_message)
 
 elif st.session_state.current_view == "doner":
     # Döner order form
@@ -365,11 +365,11 @@ elif st.session_state.current_view == "doner":
                     order["boxType"] = box_type
                 
                 # Validate order
-                validation_result = validate_doner_order(order)
-                if validation_result[0]:  # valid ist erstes Element des Tuples
+                valid, error_message = validate_doner_order(order)
+                if valid:
                     add_order(order)
                 else:
-                    st.error(validation_result[1])  # error_message ist zweites Element des Tuples
+                    st.error(error_message)
     else:
         st.info("Bitte wähle zuerst einen Laden aus.")
 
@@ -416,11 +416,11 @@ elif st.session_state.current_view == "edeka":
                 order["sauce"] = sauce
             
             # Validate order
-            validation_result = validate_edeka_order(order)
-            if validation_result[0]:  # valid ist erstes Element des Tuples
+            valid, error_message = validate_edeka_order(order)
+            if valid:
                 add_order(order)
             else:
-                st.error(validation_result[1])  # error_message ist zweites Element des Tuples
+                st.error(error_message)
 
 elif st.session_state.current_view == "order_list":
     # Order list view

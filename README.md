@@ -1,81 +1,69 @@
-# LunchSquad - Team Lunch Organizer
+# LunchSquad - Team Lunch Organizer (Streamlit Version)
 
-Eine Streamlit Web-Anwendung zur Organisation von Teambestellungen für das Mittagessen.
+Eine Streamlit-Webanwendung zur Organisation von Team-Mittagsbestellungen mit erweiterter Datenpersistenz und Cloud-kompatibler Funktionalität.
 
 ## Beschreibung
 
-LunchSquad hilft Teams dabei, ihre Mittagsbestellungen zu organisieren. Die Anwendung unterstützt verschiedene Restaurants (YamYam, Döner, Edeka) und ermöglicht jedem Teammitglied, seine individuelle Bestellung anzupassen und zu speichern.
+LunchSquad ist eine benutzerfreundliche Anwendung, die es Teams ermöglicht, Mittagsbestellungen bei verschiedenen Restaurants zu koordinieren. Die Anwendung unterstützt mehrere Restaurants (YamYam, Döner, Edeka) mit anpassbaren Bestelloptionen und bietet eine übersichtliche Verwaltung aller Bestellungen.
 
 ## Funktionen
 
-- **Mehrere Restaurants**: Unterstützung für YamYam, Döner und Edeka
-- **Anpassbare Bestellungen**: Verschiedene Optionen je nach Restaurant
-- **Bestellungsverwaltung**: Hinzufügen, Entfernen und Anzeigen von Bestellungen
-- **Exportfunktionen**: Export von Bestellungen als CSV, JSON, Text oder Bild
-- **Persistente Speicherung**: Bestellungen werden automatisch in einer JSON-Datei gespeichert
+- Interaktive Restaurantauswahl mit spezifischen Bestellformularen
+- Speichern und Laden von Bestellungen mit robuster Datenpersistenz
+- Export von Bestellungen in verschiedenen Formaten (CSV, JSON, TXT, Bild)
+- Import von Bestellungen aus JSON-Dateien
+- Responsive Benutzeroberfläche mit Streamlit
 
-## Verwendung
+## Installation und Ausführung
 
-1. Wähle ein Restaurant aus der Hauptseite
-2. Fülle das Bestellformular aus
-3. Klicke auf "Hinzufügen"
-4. Verwalte alle Bestellungen im Bestellungsmenü
-5. Exportiere die Liste bei Bedarf
+### Lokale Ausführung
 
-## Restaurants und Optionen
-
-### YamYam
-- Boxen mit verschiedenen Größen und Basis-Optionen
-- Anpassbare Toppings und Extras
-
-### Döner
-- Verschiedene Döner-Shops zur Auswahl
-- Individuell anpassbare Bestellungen mit Extras
-
-### Edeka
-- Verschiedene Produkte wie Salate und Bäcker-Artikel
-- Anpassbare Saucen und Salat-Optionen
-
-## Installation für Entwickler
-
-Benötigte Bibliotheken:
+1. Repository klonen:
 ```
-pip install streamlit pandas pillow
+git clone https://github.com/deinbenutzername/launchsquad.git
+cd launchsquad
 ```
 
-Starten der Anwendung im Entwicklungsmodus:
+2. Abhängigkeiten installieren:
+```
+pip install -r requirements.txt
+```
+
+3. Anwendung starten:
 ```
 streamlit run app.py
 ```
 
-## Bereitstellung für Nutzer
+### Streamlit Cloud Deployment
 
-Die Anwendung kann auf verschiedene Weise für Nutzer bereitgestellt werden:
+1. Erstelle einen Account auf [Streamlit Sharing](https://streamlit.io/sharing)
+2. Verbinde dein GitHub-Repository mit Streamlit Sharing
+3. Wähle `app.py` als Hauptdatei und starte die Anwendung
 
-1. **Streamlit Community Cloud** (empfohlen):
-   - Erstelle einen Account auf streamlit.io/cloud
-   - Verbinde dein GitHub-Repository
-   - Veröffentliche die App für öffentlichen Zugriff
+## Konfiguration
 
-2. **Replit** (aktuell):
-   - Teile den Link zu dieser Replit-App
-   - Nutzer können direkt im Browser auf die App zugreifen
+Die Anwendung ist für die Verwendung in der Streamlit Cloud optimiert. Die wichtigsten Konfigurationsdateien sind:
 
-3. **Andere Hosting-Optionen**:
-   - Heroku, Render, DigitalOcean, etc.
+- `.streamlit/config.toml` - Streamlit Server-Konfiguration
+- `pyproject.toml` - Python-Abhängigkeiten
 
-## Dateistruktur
+## Datenpersistenz
 
-- `app.py`: Hauptanwendung und UI-Komponenten
-- `models.py`: Datenmodelle und Bestellungsverwaltung
-- `utils.py`: Hilfsfunktionen für Formatierung und Export
-- `config.py`: Konfigurationseinstellungen
-- `lunch_orders.json`: Gespeicherte Bestellungen
+Die Anwendung verwendet einen hybriden Ansatz zur Datenpersistenz:
 
-## Version
+1. Lokale JSON-Datei (`lunch_orders.json`) für persistente Speicherung
+2. Streamlit Session State für vorübergehende Datenspeicherung während der Sitzung
 
-Version 1.0.0
+Dieser Ansatz stellt sicher, dass Daten auch in der Streamlit Cloud-Umgebung erhalten bleiben.
+
+## Fehlerbehebung
+
+Wenn die Anwendung in der Streamlit Cloud nicht startet:
+
+1. Überprüfe die `.streamlit/config.toml` auf korrekte Server-Einstellungen
+2. Stelle sicher, dass `pyproject.toml` alle notwendigen Abhängigkeiten enthält
+3. Überprüfe die Logs in der Streamlit Cloud-Benutzeroberfläche
 
 ## Lizenz
 
-Dieses Projekt steht unter der [MIT-Lizenz](LICENSE).
+[MIT Lizenz](LICENSE)
