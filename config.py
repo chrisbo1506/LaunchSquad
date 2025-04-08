@@ -36,8 +36,8 @@ DONER_OPTIONS = {
     "box_values": ["pommes", "salat"],
     
     # Sauces
-    "sauces": ["Kräuter", "Knoblauch", "Scharf", "Cocktail", "Tzatziki"],
-    "sauce_values": ["kraeuter", "knoblauch", "scharf", "cocktail", "tzatziki"],
+    "sauces": ["Kräuter", "Knoblauch", "Scharf", "Cocktail", "Mango Chili"],
+    "sauce_values": ["kraeuter", "knoblauch", "scharf", "cocktail", "Mango Chili"],
     
     # Spice levels
     "spice_levels": ["Nicht scharf", "Normal scharf", "Extra scharf"],
@@ -60,7 +60,7 @@ EDEKA_OPTIONS = {
     "products": ["Salat", "Sandwich", "Wrap", "Bäcker"],
     
     # Salad options
-    "salads": ["Kleiner Salat (€3.50)", "Großer Salat (€5.90)", "Spezial Salat (€7.50)"],
+    "salads": ["Kleiner Salat", "Großer Salat", "Spezial Salat"],
     
     # Sandwich/Wrap sauces
     "sauces": ["Mayo", "Senf", "Ketchup", "BBQ", "Süß-Sauer", "Ohne Sauce"]
