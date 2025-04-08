@@ -1,0 +1,16 @@
+[
+  {
+    "type": "doner",
+    "shop": "king",
+    "name": "Chris",
+    "product": "doner",
+    "sauces": [
+      "jogurt"
+    ],
+    "extras": [
+      "ohne-tomate"
+    ],
+    "spiceLevel": "normal",
+    "timestamp": "2025-03-19T15:54:29.612520"
+  }
+]
