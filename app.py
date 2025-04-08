@@ -440,3 +440,4 @@ elif st.session_state.current_view == "order_list":
 # Footer with version info
 st.markdown("---")
 st.caption(f"LunchSquad v1.0.0 - Team Lunch Organizer")
+ 
