@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Data models for the LunchSquad application - Optimized for Streamlit Cloud
+Data models for the LunchSquad application
 """
 
 import json
@@ -25,23 +25,19 @@ class OrderManager:
         # Add timestamp to the order
         order["timestamp"] = datetime.now().isoformat()
         self.orders.append(order)
-        # Save immediately for persistence
-        self.save_orders()
         return True
 
     def remove_order(self, index):
         """Remove an order by its index"""
         if 0 <= index < len(self.orders):
             del self.orders[index]
-            # Save immediately for persistence
-            self.save_orders()
             return True
         return False
 
     def clear_orders(self):
         """Clear all orders"""
         self.orders = []
-        # Save immediately for persistence
+        # Speichere die leere Liste, um Persistenz zu gewährleisten
         self.save_orders()
         return True
 
@@ -50,37 +46,40 @@ class OrderManager:
         return self.orders
 
     def load_orders(self):
-        """Load orders from storage file and put in session state"""
-        # Try to load from file
+        """Load orders from storage file or session state"""
+        # First try to load from session state if available (for Streamlit Cloud)
+        if 'orders_data' in st.session_state:
+            self.orders = st.session_state.orders_data
+            return True
+        
+        # Otherwise load from file
         try:
             if os.path.exists(self.storage_file):
                 with open(self.storage_file, 'r', encoding='utf-8') as f:
                     self.orders = json.load(f)
-                # Save to session state
-                if hasattr(st, 'session_state'):
-                    st.session_state.orders_data = self.orders
+                # Save to session state for future use
+                st.session_state.orders_data = self.orders
                 return True
         except Exception as e:
             print(f"Error loading orders: {e}")
             self.orders = []
-            if hasattr(st, 'session_state'):
-                st.session_state.orders_data = []
+            st.session_state.orders_data = []
         return False
 
     def save_orders(self):
-        """Save orders to storage file"""
-        # Save to session state if available
-        if hasattr(st, 'session_state'):
-            st.session_state.orders_data = self.orders
+        """Save orders to storage file and session state"""
+        # Always save to session state for persistence on Streamlit Cloud
+        st.session_state.orders_data = self.orders
         
-        # Always try to save to file for persistence
+        # Also try to save to file (works locally, may not work on Streamlit Cloud)
         try:
             with open(self.storage_file, 'w', encoding='utf-8') as f:
                 json.dump(self.orders, f, ensure_ascii=False, indent=2)
             return True
         except Exception as e:
             print(f"Error saving to file: {e}")
-            return False
+            # Not critical as we already saved to session state
+            return True
 
     def get_orders_dataframe(self):
         """Convert orders to a pandas DataFrame for display"""
