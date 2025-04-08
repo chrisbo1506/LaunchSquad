@@ -69,35 +69,6 @@ def save_orders():
     else:
         st.error("Bestellungen konnten nicht gespeichert werden.")
 
-def add_order(order_data):
-    """Add a new order"""
-    # Add order to session state
-    order_data["timestamp"] = datetime.now().isoformat()
-    st.session_state.orders.append(order_data)
-    # Update order manager
-    st.session_state.order_manager.orders = st.session_state.orders
-    
-    # Inform user
-    st.success(f"Bestellung für {order_data['name']} hinzugefügt!")
-    
-    # Return to main view
-    st.session_state.current_view = "order_list"
-    st.rerun()
-
-def remove_order(index):
-    """Remove an order by index"""
-    if 0 <= index < len(st.session_state.orders):
-        del st.session_state.orders[index]
-        st.session_state.order_manager.orders = st.session_state.orders
-        st.success("Bestellung entfernt.")
-        st.rerun()
-
-def clear_orders():
-    """Clear all orders"""
-    st.session_state.orders = []
-    st.session_state.order_manager.clear_orders()
-    st.success("Alle Bestellungen wurden gelöscht.")
-    st.rerun()
 
 def change_view(view_name):
     """Change the current view"""
@@ -124,7 +95,14 @@ st.sidebar.markdown("---")
 st.sidebar.subheader("Bestellungen verwalten")
 
 if st.sidebar.button("Speichern", use_container_width=True):
-    save_orders()
+    # Sicherstellen, dass OrderManager die aktuelle Liste hat
+    st.session_state.order_manager.orders = st.session_state.orders
+    # Jetzt speichern
+    success = st.session_state.order_manager.save_orders()
+    if success:
+        st.success("Bestellungen wurden erfolgreich gespeichert.")
+    else:
+        st.error("Bestellungen konnten nicht gespeichert werden.")
 
 # Export options dropdown in sidebar
 export_option = st.sidebar.selectbox(
