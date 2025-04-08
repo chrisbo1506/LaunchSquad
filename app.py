@@ -253,7 +253,7 @@ if st.sidebar.button("Alle Bestellungen löschen", use_container_width=True):
 # Main content based on current view
 if st.session_state.current_view == "main":
     # Main selection view
-    st.title("Restaurantauswahl")
+    st.title("Restaurantwahl")
     
     # Restaurant voting system
     st.subheader("Abstimmung: Welches Restaurant soll heute gewählt werden?")
