@@ -7,23 +7,29 @@ Provides mechanisms to store and retrieve data in Streamlit Cloud environment.
 """
 
 import json
-import pickle
-import base64
+import os
 import streamlit as st
+
+# Definiere Konstanten
+DEFAULT_STORAGE_DIR = ".streamlit/storage"
+DEFAULT_VOTE_FILE = ".streamlit/storage/votes.json"
+DEFAULT_VOTE_COUNT_FILE = ".streamlit/storage/vote_count.json"
 
 class CloudStorage:
     """
-    Handles data persistence in Streamlit Cloud environment using session_state and cookies.
-    This class provides a reliable way to store data between app restarts in Streamlit Cloud.
+    Handles data persistence in Streamlit Cloud environment using both session_state and files.
+    This class provides a reliable way to store data between app restarts for all users.
     """
     
-    # Prefix for cookie-based storage
-    COOKIE_PREFIX = "stpersist_"
+    @staticmethod
+    def _ensure_storage_dir():
+        """Stellt sicher, dass das Speicherverzeichnis existiert."""
+        os.makedirs(DEFAULT_STORAGE_DIR, exist_ok=True)
     
     @staticmethod
     def save_data(key, data):
         """
-        Save data to Streamlit's session state and cookies for persistent storage.
+        Save data to Streamlit's session state AND to a persistent file.
         
         Args:
             key (str): The key to store the data under
@@ -36,35 +42,27 @@ class CloudStorage:
             # Store in session_state for current session use
             st.session_state[key] = data
             
-            # Handle data serialization for cookie storage
-            if isinstance(data, (dict, list)):
-                # For complex types, use JSON serialization
-                serialized_data = json.dumps(data)
+            # Ensure we can store this data in a file
+            if not isinstance(data, (dict, list, str, int, float, bool)) and data is not None:
+                print(f"Warnung: Typ nicht vollständig serialisierbar für {key}: {type(data)}")
+                # Try to convert to appropriate structure if possible
+                
+            # Determine the appropriate file path
+            CloudStorage._ensure_storage_dir()
+            
+            # Special case handling for known key types
+            if key == "votes":
+                file_path = DEFAULT_VOTE_FILE
+            elif key == "vote_count":
+                file_path = DEFAULT_VOTE_COUNT_FILE
             else:
-                # For simple types, convert to string
-                serialized_data = str(data)
+                file_path = os.path.join(DEFAULT_STORAGE_DIR, f"{key}.json")
             
-            # Use st.experimental_set_query_params to create a persistent URL parameter
-            # This acts like a cookie that persists between sessions
-            cookie_key = f"{CloudStorage.COOKIE_PREFIX}{key}"
+            # Save to persistent file
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
             
-            # Create or update our special URL parameter
-            # We're abusing query parameters as a persistent storage mechanism
-            st.query_params[cookie_key] = serialized_data
-            
-            # Also store directly as a cookie if supporting browser storage
-            # This is a backup method and might not work in all environments
-            st.markdown(
-                f"""
-                <script>
-                    localStorage.setItem('{cookie_key}', '{serialized_data}');
-                    console.log('Stored data for {key}');
-                </script>
-                """,
-                unsafe_allow_html=True
-            )
-            
-            print(f"Daten erfolgreich gespeichert für {key}: {data}")
+            print(f"Daten erfolgreich gespeichert für {key} in Datei {file_path}: {data}")
             return True
         except Exception as e:
             print(f"Fehler beim Speichern von {key}: {e}")
@@ -73,7 +71,7 @@ class CloudStorage:
     @staticmethod
     def load_data(key, default=None):
         """
-        Load data from Streamlit's persistent storage mechanisms.
+        Load data from session state and file-based storage.
         
         Args:
             key (str): The key to retrieve data from
@@ -90,44 +88,30 @@ class CloudStorage:
                     print(f"Daten aus session_state geladen für {key}: {data}")
                     return data
             
-            # Check URL parameters (our abuse of query params for persistence)
-            cookie_key = f"{CloudStorage.COOKIE_PREFIX}{key}"
+            # Determine the appropriate file path
+            if key == "votes":
+                file_path = DEFAULT_VOTE_FILE
+            elif key == "vote_count":
+                file_path = DEFAULT_VOTE_COUNT_FILE
+            else:
+                file_path = os.path.join(DEFAULT_STORAGE_DIR, f"{key}.json")
             
-            if cookie_key in st.query_params:
-                serialized_data = st.query_params[cookie_key]
-                
-                # Try to parse as JSON for complex types
+            # Try to load from persistent file
+            if os.path.exists(file_path):
                 try:
-                    data = json.loads(serialized_data)
-                    st.session_state[key] = data  # Update session state
-                    print(f"Daten aus URL-Parametern geladen für {key}: {data}")
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                    
+                    # Update session state for future access
+                    st.session_state[key] = data
+                    print(f"Daten aus Datei geladen für {key} ({file_path}): {data}")
                     return data
                 except json.JSONDecodeError:
-                    # If not JSON, use as string or convert appropriately
-                    st.session_state[key] = serialized_data
-                    print(f"Daten als String aus URL-Parametern geladen für {key}: {serialized_data}")
-                    return serialized_data
+                    print(f"Fehler beim Parsen der JSON-Datei für {key} ({file_path})")
+                except Exception as e:
+                    print(f"Fehler beim Laden aus Datei für {key} ({file_path}): {e}")
             
-            # Also try to load from local storage in the browser
-            # This might not execute in all environments 
-            local_storage_check = st.empty()
-            local_storage_check.markdown(
-                f"""
-                <script>
-                    const storedData = localStorage.getItem('{cookie_key}');
-                    if (storedData) {{
-                        console.log('Found data in localStorage for {key}');
-                        window.parent.postMessage({{
-                            type: 'streamlit:setComponentValue',
-                            value: storedData
-                        }}, '*');
-                    }}
-                </script>
-                """,
-                unsafe_allow_html=True
-            )
-            
-            # No data found in any storage, return default
+            # No data found, return default
             print(f"Keine Daten gefunden für {key}, verwende Standard: {default}")
             return default
         except Exception as e:
@@ -137,7 +121,7 @@ class CloudStorage:
     @staticmethod
     def delete_data(key):
         """
-        Delete data from all storage mechanisms.
+        Delete data from both session state and file storage.
         
         Args:
             key (str): The key to delete
@@ -146,28 +130,29 @@ class CloudStorage:
             bool: True if deletion was successful
         """
         try:
+            success = False
+            
             # Remove from session state
             if key in st.session_state:
                 del st.session_state[key]
+                success = True
             
-            # Remove from URL parameters
-            cookie_key = f"{CloudStorage.COOKIE_PREFIX}{key}"
-            if cookie_key in st.query_params:
-                del st.query_params[cookie_key]
+            # Determine the appropriate file path
+            if key == "votes":
+                file_path = DEFAULT_VOTE_FILE
+            elif key == "vote_count":
+                file_path = DEFAULT_VOTE_COUNT_FILE
+            else:
+                file_path = os.path.join(DEFAULT_STORAGE_DIR, f"{key}.json")
             
-            # Try to remove from local storage
-            st.markdown(
-                f"""
-                <script>
-                    localStorage.removeItem('{cookie_key}');
-                    console.log('Removed data for {key}');
-                </script>
-                """,
-                unsafe_allow_html=True
-            )
+            # Remove file if it exists
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                success = True
+                print(f"Datei gelöscht für {key}: {file_path}")
             
             print(f"Daten für {key} erfolgreich gelöscht")
-            return True
+            return success
         except Exception as e:
             print(f"Fehler beim Löschen von {key}: {e}")
             return False
@@ -187,12 +172,15 @@ class CloudStorage:
             if not key.startswith('_') and key not in ['current_view', 'selected_shop', 'confirm_clear_all_main']:
                 keys.append(key)
         
-        # Get keys from URL parameters
-        for param_key in st.query_params:
-            if param_key.startswith(CloudStorage.COOKIE_PREFIX):
-                # Extract the original key name
-                original_key = param_key[len(CloudStorage.COOKIE_PREFIX):]
-                if original_key not in keys:
-                    keys.append(original_key)
+        # Get keys from storage directory
+        try:
+            if os.path.exists(DEFAULT_STORAGE_DIR):
+                for filename in os.listdir(DEFAULT_STORAGE_DIR):
+                    if filename.endswith('.json'):
+                        key = filename[:-5]  # Remove .json extension
+                        if key not in keys:
+                            keys.append(key)
+        except Exception as e:
+            print(f"Fehler beim Auflisten der Dateien im Speicherverzeichnis: {e}")
         
         return keys

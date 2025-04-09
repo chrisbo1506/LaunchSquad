@@ -308,7 +308,7 @@ if st.sidebar.button("Alle Bestellungen löschen", use_container_width=True):
 # Main content based on current view
 if st.session_state.current_view == "main":
     # Main selection view
-    st.title("Wahl des Restaurants")
+    st.title("Restaurantauswahl")
     
     # Reset-Button für alle Bestellungen - direkt sichtbar auf der Hauptseite
     with st.expander("Alle Bestellungen und Abstimmungen zurücksetzen", expanded=False):
