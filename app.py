@@ -52,29 +52,115 @@ if "selected_shop" not in st.session_state:
 # Restaurant voting system initialization with Persistenz
 from cloud_storage import CloudStorage
 
-# Standardwerte für Abstimmung
-DEFAULT_VOTE_COUNT = {
-    "yamyam": 0,
-    "doner": 0,
-    "edeka": 0
-}
+# Erstelle eine Klasse zur Verwaltung der Abstimmungsdaten, ähnlich wie OrderManager
+class VoteManager:
+    """Verwaltet die Abstimmungsdaten und deren Persistenz"""
+    
+    def __init__(self):
+        # Standardwerte für Abstimmung
+        self.default_vote_count = {
+            "yamyam": 0,
+            "doner": 0,
+            "edeka": 0
+        }
+        # Initialisiere die Abstimmungsdaten
+        self.votes = {}  # Format: {"username": "restaurant_vote"}
+        self.vote_count = self.default_vote_count.copy()
+        # Lade die gespeicherten Daten
+        self.load_votes()
+    
+    def load_votes(self):
+        """Lade Abstimmungsdaten aus dem persistenten Speicher"""
+        # Lade Stimmen
+        loaded_votes = CloudStorage.load_data("persisted_votes")
+        if loaded_votes is not None:
+            self.votes = loaded_votes
+            print(f"VoteManager: Stimmen geladen: {self.votes}")
+        
+        # Lade Stimmenzähler
+        loaded_vote_count = CloudStorage.load_data("persisted_vote_count")
+        if loaded_vote_count is not None:
+            self.vote_count = loaded_vote_count
+            print(f"VoteManager: Stimmenzähler geladen: {self.vote_count}")
+            
+            # Stelle sicher, dass alle erforderlichen Schlüssel in vote_count vorhanden sind
+            for key in self.default_vote_count:
+                if key not in self.vote_count:
+                    self.vote_count[key] = 0
+        
+        # Synchronisiere mit der Session
+        self.sync_to_session()
+    
+    def save_votes(self):
+        """Speichere Abstimmungsdaten in den persistenten Speicher"""
+        # Speichere Stimmen
+        CloudStorage.save_data("persisted_votes", self.votes)
+        # Speichere Stimmenzähler
+        CloudStorage.save_data("persisted_vote_count", self.vote_count)
+        # Synchronisiere mit der Session
+        self.sync_to_session()
+        print(f"VoteManager: Daten gespeichert - Stimmen: {self.votes}, Zähler: {self.vote_count}")
+    
+    def clear_votes(self):
+        """Lösche alle Abstimmungsdaten"""
+        self.votes = {}
+        self.vote_count = self.default_vote_count.copy()
+        # Speichere die leeren Daten
+        CloudStorage.save_data("persisted_votes", self.votes)
+        CloudStorage.save_data("persisted_vote_count", self.vote_count)
+        # Synchronisiere mit der Session
+        self.sync_to_session()
+        print("VoteManager: Alle Stimmen zurückgesetzt")
+    
+    def add_vote(self, username, restaurant):
+        """Füge eine Stimme hinzu oder aktualisiere sie"""
+        if not username or username.strip() == "":
+            return False, "Bitte gib deinen Namen ein."
+        
+        # Bereinige den Benutzernamen
+        username = username.strip()
+        
+        # Aktualisiere den Stimmenzähler, wenn sich die Stimme geändert hat
+        if username in self.votes:
+            old_vote = self.votes[username]
+            if old_vote != restaurant:
+                # Entferne die alte Stimme
+                self.vote_count[old_vote] -= 1
+                # Füge die neue Stimme hinzu
+                self.vote_count[restaurant] += 1
+        else:
+            # Neue Stimme
+            self.vote_count[restaurant] += 1
+        
+        # Speichere die Stimme des Benutzers
+        self.votes[username] = restaurant
+        
+        # Speichere die aktualisierten Daten
+        self.save_votes()
+        
+        return True, f"Stimme für {restaurant.capitalize()} gezählt!"
+    
+    def sync_to_session(self):
+        """Synchronisiere die Daten mit der Session"""
+        st.session_state.votes = self.votes
+        st.session_state.vote_count = self.vote_count
+    
+    def sync_from_session(self):
+        """Synchronisiere die Daten von der Session"""
+        if "votes" in st.session_state:
+            self.votes = st.session_state.votes
+        if "vote_count" in st.session_state:
+            self.vote_count = st.session_state.vote_count
+        self.save_votes()
 
-# Lade Abstimmungsdaten aus dem Cloud-Speicher
-saved_votes = CloudStorage.load_data("votes", {})  # Format: {"username": "restaurant_vote"}
-st.session_state.votes = saved_votes
-
-# Lade die Stimmenanzahl oder initialisiere sie, wenn noch nicht vorhanden
-saved_vote_count = CloudStorage.load_data("vote_count", DEFAULT_VOTE_COUNT)
-st.session_state.vote_count = saved_vote_count
-
-# Stelle sicher, dass alle erforderlichen Schlüssel in vote_count vorhanden sind
-for key in DEFAULT_VOTE_COUNT:
-    if key not in st.session_state.vote_count:
-        st.session_state.vote_count[key] = 0
-
-# Debug-Informationen
-print("Geladene Abstimmungen:", st.session_state.votes)
-print("Geladene Stimmenanzahl:", st.session_state.vote_count)
+# Initialisiere den Vote Manager, wenn er noch nicht existiert
+if "vote_manager" not in st.session_state:
+    st.session_state.vote_manager = VoteManager()
+    print("Neuer VoteManager erstellt - Stimmen:", st.session_state.vote_manager.votes)
+else:
+    # Stelle sicher, dass die Daten aus dem VoteManager in der Session sind
+    st.session_state.vote_manager.sync_to_session()
+    print("Bestehender VoteManager verwendet - Stimmen:", st.session_state.vote_manager.votes)
 
 # Initialize order manager if not already present
 # This will automatically handle cloud persistence
@@ -91,34 +177,9 @@ else:
         st.session_state.order_manager.orders = st.session_state.orders
 
 def vote_for_restaurant(username, restaurant):
-    """Record a vote for a restaurant"""
-    # Prüfe auf leeren Benutzernamen
-    if not username or username.strip() == "":
-        return False, "Bitte gib deinen Namen ein."
-    
-    # Bereinige den Benutzernamen
-    username = username.strip()
-    
-    # Aktualisiere den Stimmenzähler, wenn sich die Stimme geändert hat
-    if username in st.session_state.votes:
-        old_vote = st.session_state.votes[username]
-        if old_vote != restaurant:
-            # Entferne die alte Stimme
-            st.session_state.vote_count[old_vote] -= 1
-            # Füge die neue Stimme hinzu
-            st.session_state.vote_count[restaurant] += 1
-    else:
-        # Neue Stimme
-        st.session_state.vote_count[restaurant] += 1
-    
-    # Speichere die Stimme des Benutzers
-    st.session_state.votes[username] = restaurant
-    
-    # Aktualisiere Cloud-Speicherung für Abstimmungen
-    CloudStorage.save_data("votes", st.session_state.votes)
-    CloudStorage.save_data("vote_count", st.session_state.vote_count)
-    
-    return True, f"Stimme für {restaurant.capitalize()} gezählt!"
+    """Record a vote for a restaurant using the VoteManager"""
+    # Verwende den VoteManager, um die Stimme zu erfassen (kümmert sich um Persistenz)
+    return st.session_state.vote_manager.add_vote(username, restaurant)
 
 def save_orders():
     """Save orders to persistent storage"""
@@ -170,21 +231,8 @@ def clear_orders():
     # Save explicitly to ensure persistence
     st.session_state.order_manager.save_orders()
     
-    # Reset the votes when orders are cleared
-    st.session_state.votes = {}
-    st.session_state.vote_count = {
-        "yamyam": 0,
-        "doner": 0,
-        "edeka": 0
-    }
-    
-    # Lösche auch die Abstimmungsdaten im Cloud-Speicher
-    CloudStorage.save_data("votes", {})
-    CloudStorage.save_data("vote_count", {
-        "yamyam": 0,
-        "doner": 0,
-        "edeka": 0
-    })
+    # Reset the votes when orders are cleared using the VoteManager
+    st.session_state.vote_manager.clear_votes()
     
     if success:
         st.success("Alle Bestellungen und Abstimmungen wurden gelöscht.")
