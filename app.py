@@ -49,15 +49,21 @@ if "current_view" not in st.session_state:
 if "selected_shop" not in st.session_state:
     st.session_state.selected_shop = None
 
-# Restaurant voting system initialization
+# Restaurant voting system initialization with Persistenz
+from cloud_storage import CloudStorage
+
+# Lade Abstimmungsdaten aus dem Cloud-Speicher
 if "votes" not in st.session_state:
-    st.session_state.votes = {}  # Format: {"username": "restaurant_vote"}
+    saved_votes = CloudStorage.load_data("votes", {})  # Format: {"username": "restaurant_vote"}
+    st.session_state.votes = saved_votes
+
 if "vote_count" not in st.session_state:
-    st.session_state.vote_count = {
+    saved_vote_count = CloudStorage.load_data("vote_count", {
         "yamyam": 0,
         "doner": 0,
         "edeka": 0
-    }
+    })
+    st.session_state.vote_count = saved_vote_count
 
 # Initialize order manager if not already present
 # This will automatically handle cloud persistence
@@ -96,6 +102,11 @@ def vote_for_restaurant(username, restaurant):
     
     # Speichere die Stimme des Benutzers
     st.session_state.votes[username] = restaurant
+    
+    # Aktualisiere Cloud-Speicherung für Abstimmungen
+    CloudStorage.save_data("votes", st.session_state.votes)
+    CloudStorage.save_data("vote_count", st.session_state.vote_count)
+    
     return True, f"Stimme für {restaurant.capitalize()} gezählt!"
 
 def save_orders():
@@ -155,6 +166,14 @@ def clear_orders():
         "doner": 0,
         "edeka": 0
     }
+    
+    # Lösche auch die Abstimmungsdaten im Cloud-Speicher
+    CloudStorage.save_data("votes", {})
+    CloudStorage.save_data("vote_count", {
+        "yamyam": 0,
+        "doner": 0,
+        "edeka": 0
+    })
     
     if success:
         st.success("Alle Bestellungen und Abstimmungen wurden gelöscht.")
@@ -253,7 +272,34 @@ if st.sidebar.button("Alle Bestellungen löschen", use_container_width=True):
 # Main content based on current view
 if st.session_state.current_view == "main":
     # Main selection view
-    st.title("Restaurantwahl")
+    st.title("Restaurantauswahl")
+    
+    # Reset-Button für alle Bestellungen - direkt sichtbar auf der Hauptseite
+    with st.expander("Alle Bestellungen und Abstimmungen zurücksetzen", expanded=False):
+        st.warning("⚠️ Achtung: Diese Aktion kann nicht rückgängig gemacht werden!")
+        
+        # Initialisiere Checkbox-Status in session_state, falls nicht vorhanden
+        if "confirm_clear_all_main" not in st.session_state:
+            st.session_state.confirm_clear_all_main = False
+            
+        # Checkbox für Bestätigung
+        confirmation = st.checkbox(
+            "Bestätigen: Alle Bestellungen und Abstimmungen unwiderruflich löschen?", 
+            key="confirm_checkbox_main",
+            value=st.session_state.confirm_clear_all_main
+        )
+        
+        # Aktualisiere session_state basierend auf Checkbox
+        st.session_state.confirm_clear_all_main = confirmation
+        
+        # Button zum Löschen
+        if st.button("Alles löschen", key="clear_all_main"):
+            if st.session_state.confirm_clear_all_main:
+                clear_orders()
+                st.success("Alle Bestellungen und Abstimmungen wurden gelöscht.")
+                st.rerun()
+            else:
+                st.error("Bitte bestätige zuerst, dass du alles löschen möchtest.")
     
     # Restaurant voting system
     st.subheader("Abstimmung: Welches Restaurant soll heute gewählt werden?")
@@ -291,9 +337,15 @@ if st.session_state.current_view == "main":
     with vote_col2:
         # Ergebnisse anzeigen
         st.write("### Abstimmungsergebnis")
-        st.write(f"YamYam: {st.session_state.vote_count['yamyam']} Stimmen")
-        st.write(f"Döner: {st.session_state.vote_count['doner']} Stimmen")
-        st.write(f"Edeka: {st.session_state.vote_count['edeka']} Stimmen")
+        
+        # Stelle sicher, dass die Werte existieren oder setze Standardwerte
+        yamyam_votes = st.session_state.vote_count.get('yamyam', 0)
+        doner_votes = st.session_state.vote_count.get('doner', 0)
+        edeka_votes = st.session_state.vote_count.get('edeka', 0)
+        
+        st.write(f"YamYam: {yamyam_votes} Stimmen")
+        st.write(f"Döner: {doner_votes} Stimmen")
+        st.write(f"Edeka: {edeka_votes} Stimmen")
         
         # Teilnehmer anzeigen
         if st.session_state.votes:
