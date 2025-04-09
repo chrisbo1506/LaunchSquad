@@ -52,18 +52,29 @@ if "selected_shop" not in st.session_state:
 # Restaurant voting system initialization with Persistenz
 from cloud_storage import CloudStorage
 
-# Lade Abstimmungsdaten aus dem Cloud-Speicher
-if "votes" not in st.session_state:
-    saved_votes = CloudStorage.load_data("votes", {})  # Format: {"username": "restaurant_vote"}
-    st.session_state.votes = saved_votes
+# Standardwerte für Abstimmung
+DEFAULT_VOTE_COUNT = {
+    "yamyam": 0,
+    "doner": 0,
+    "edeka": 0
+}
 
-if "vote_count" not in st.session_state:
-    saved_vote_count = CloudStorage.load_data("vote_count", {
-        "yamyam": 0,
-        "doner": 0,
-        "edeka": 0
-    })
-    st.session_state.vote_count = saved_vote_count
+# Lade Abstimmungsdaten aus dem Cloud-Speicher
+saved_votes = CloudStorage.load_data("votes", {})  # Format: {"username": "restaurant_vote"}
+st.session_state.votes = saved_votes
+
+# Lade die Stimmenanzahl oder initialisiere sie, wenn noch nicht vorhanden
+saved_vote_count = CloudStorage.load_data("vote_count", DEFAULT_VOTE_COUNT)
+st.session_state.vote_count = saved_vote_count
+
+# Stelle sicher, dass alle erforderlichen Schlüssel in vote_count vorhanden sind
+for key in DEFAULT_VOTE_COUNT:
+    if key not in st.session_state.vote_count:
+        st.session_state.vote_count[key] = 0
+
+# Debug-Informationen
+print("Geladene Abstimmungen:", st.session_state.votes)
+print("Geladene Stimmenanzahl:", st.session_state.vote_count)
 
 # Initialize order manager if not already present
 # This will automatically handle cloud persistence
