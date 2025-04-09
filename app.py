@@ -65,8 +65,8 @@ DEFAULT_VOTE_COUNT = {
 # Zuerst die Votes initialisieren
 if "votes" not in st.session_state:
     print("Initialisiere Abstimmungsdaten in der Session...")
-    # Lade Benutzer-Votes aus dem Cloud-Speicher
-    stored_votes = CloudStorage.load_data("persistent_votes", {})
+    # Lade Benutzer-Votes aus dem Cloud-Speicher - direkt mit dem Schlüsselnamen "votes"
+    stored_votes = CloudStorage.load_data("votes", {})
     if stored_votes is None:  # Fallback, wenn None zurückgegeben wird
         stored_votes = {}
     st.session_state["votes"] = stored_votes
@@ -74,8 +74,8 @@ if "votes" not in st.session_state:
 
 # Dann den Stimmenzähler initialisieren
 if "vote_count" not in st.session_state:
-    # Laden des Stimmenzählers
-    stored_vote_count = CloudStorage.load_data("persistent_vote_count", DEFAULT_VOTE_COUNT)
+    # Laden des Stimmenzählers - direkt mit dem Schlüsselnamen "vote_count"
+    stored_vote_count = CloudStorage.load_data("vote_count", DEFAULT_VOTE_COUNT)
     if stored_vote_count is None:  # Fallback, wenn None zurückgegeben wird
         stored_vote_count = DEFAULT_VOTE_COUNT.copy()
     st.session_state["vote_count"] = stored_vote_count
@@ -87,7 +87,7 @@ if "vote_count" not in st.session_state:
             st.session_state["vote_count"][key] = 0
     
     # Geladene Daten ausgeben
-    if stored_votes:
+    if len(stored_votes) > 0:
         print(f"Abstimmungen geladen: {len(stored_votes)} Stimmen")
     else:
         print("Keine bestehenden Abstimmungen gefunden.")
@@ -120,13 +120,9 @@ def vote_for_restaurant(username, restaurant):
     # Speichere die Stimme des Benutzers
     st.session_state.votes[username] = restaurant
     
-    # Persistente Kopien im session_state aktualisieren für Neustart der App
-    st.session_state.persistent_votes = st.session_state.votes.copy()
-    st.session_state.persistent_vote_count = st.session_state.vote_count.copy()
-    
-    # Speichere in Cloud Storage
-    CloudStorage.save_data("persistent_votes", st.session_state.votes)
-    CloudStorage.save_data("persistent_vote_count", st.session_state.vote_count)
+    # Direkt in Cloud Storage speichern
+    CloudStorage.save_data("votes", st.session_state.votes)
+    CloudStorage.save_data("vote_count", st.session_state.vote_count)
     
     print(f"Stimme gespeichert für {username}: {restaurant}")
     print(f"Aktualisierter Stimmenzähler: {st.session_state.vote_count}")
@@ -140,13 +136,9 @@ def clear_votes():
     st.session_state.votes = {}
     st.session_state.vote_count = DEFAULT_VOTE_COUNT.copy()
     
-    # Persistente Kopien aktualisieren
-    st.session_state.persistent_votes = {}
-    st.session_state.persistent_vote_count = DEFAULT_VOTE_COUNT.copy()
-    
-    # Cloud Storage aktualisieren
-    CloudStorage.save_data("persistent_votes", {})
-    CloudStorage.save_data("persistent_vote_count", DEFAULT_VOTE_COUNT.copy())
+    # Cloud Storage direkt aktualisieren
+    CloudStorage.save_data("votes", {})
+    CloudStorage.save_data("vote_count", DEFAULT_VOTE_COUNT.copy())
     
     print("Alle Abstimmungen wurden zurückgesetzt.")
 
