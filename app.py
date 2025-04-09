@@ -308,7 +308,7 @@ if st.sidebar.button("Alle Bestellungen löschen", use_container_width=True):
 # Main content based on current view
 if st.session_state.current_view == "main":
     # Main selection view
-    st.title("Restaurantauswahl")
+    st.title("Wahl des Restaurants")
     
     # Reset-Button für alle Bestellungen - direkt sichtbar auf der Hauptseite
     with st.expander("Alle Bestellungen und Abstimmungen zurücksetzen", expanded=False):
@@ -565,6 +565,9 @@ elif st.session_state.current_view == "edeka":
     # Edeka order form
     st.title(f"{EDEKA_OPTIONS['icon']} {EDEKA_OPTIONS['name']} Bestellung")
     
+    # Zeige den Hinweis für Bäcker-Bestellungen außerhalb des Formulars
+    st.info("**Hinweis für Bäcker-Bestellungen:** Bitte einmal auf 'Hinzufügen' klicken, damit das Formular für den Freitext erscheint.")
+    
     # Create form for order
     with st.form("edeka_order_form"):
         name = st.text_input("Name:")
@@ -688,7 +691,7 @@ elif st.session_state.current_view == "order_list":
         st.info("Keine Bestellungen vorhanden.")
         
         # Add a button to go back to main view to add orders
-        if st.button("Zurück zur Restaurantauswahl"):
+        if st.button("Zurück zur Wahl des Restaurants"):
             change_view("main")
 
 # Footer with version info
